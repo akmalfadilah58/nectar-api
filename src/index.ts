@@ -1,50 +1,103 @@
-import { ApiException, fromHono } from "chanfana";
-import { Hono } from "hono";
-import { tasksRouter } from "./endpoints/tasks/router";
-import { ContentfulStatusCode } from "hono/utils/http-status";
-import { DummyEndpoint } from "./endpoints/dummyEndpoint";
+// === NECTAR API - Cloudflare Worker ===
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",                    // Allow all origins (change to your domain later for security)
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Max-Age": "86400",
+};
 
-// Start a Hono app
-const app = new Hono<{ Bindings: Env }>();
+// Handle preflight (OPTIONS) requests - Very Important!
+function handleOptions(request) {
+  return new Response(null, {
+    headers: corsHeaders,
+  });
+}
 
-app.onError((err, c) => {
-	if (err instanceof ApiException) {
-		// If it's a Chanfana ApiException, let Chanfana handle the response
-		return c.json(
-			{ success: false, errors: err.buildResponse() },
-			err.status as ContentfulStatusCode,
-		);
-	}
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
 
-	console.error("Global error handler caught:", err); // Log the error if it's not known
+    // Handle CORS preflight
+    if (request.method === "OPTIONS") {
+      return handleOptions(request);
+    }
 
-	// For other errors, return a generic 500 response
-	return c.json(
-		{
-			success: false,
-			errors: [{ code: 7000, message: "Internal Server Error" }],
-		},
-		500,
-	);
-});
+    // === REGISTER ===
+    if (url.pathname === "/register" && request.method === "POST") {
+      try {
+        const userData = await request.json();
 
-// Setup OpenAPI registry
-const openapi = fromHono(app, {
-	docs_url: "/",
-	schema: {
-		info: {
-			title: "My Awesome API",
-			version: "2.0.0",
-			description: "This is the documentation for my awesome API.",
-		},
-	},
-});
+        // TODO: Add your actual registration logic here
+        // Example: Save to KV, D1 database, or just test response
+        console.log("Register attempt:", userData.username);
 
-// Register Tasks Sub router
-openapi.route("/tasks", tasksRouter);
+        // For testing right now - return success
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Registration successful (test mode)" 
+          }),
+          { 
+            headers: { 
+              ...corsHeaders, 
+              "Content-Type": "application/json" 
+            } 
+          }
+        );
 
-// Register other endpoints
-openapi.post("/dummy/:slug", DummyEndpoint);
+      } catch (err) {
+        return new Response(
+          JSON.stringify({ error: "Invalid data" }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      }
+    }
 
-// Export the Hono app
-export default app;
+    // === LOGIN ===
+    if (url.pathname === "/login" && request.method === "POST") {
+      try {
+        const loginData = await request.json();
+
+        // TODO: Add real login logic (check password, etc.)
+        console.log("Login attempt:", loginData.username);
+
+        return new Response(
+          JSON.stringify({
+            username: loginData.username,
+            name: "Test Student",
+            nis: 12345,
+            uClass: "7A",
+            exam_status: "Not Taken",
+            // score: 85   // uncomment when you have score
+          }),
+          { 
+            headers: { 
+              ...corsHeaders, 
+              "Content-Type": "application/json" 
+            } 
+          }
+        );
+
+      } catch (err) {
+        return new Response(
+          JSON.stringify({ error: "Invalid credentials" }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      }
+    }
+
+    // Default response
+    return new Response(
+      JSON.stringify({ message: "NECTAR API is running" }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      }
+    );
+  },
+};
