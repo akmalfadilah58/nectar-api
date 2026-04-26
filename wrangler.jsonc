@@ -1,0 +1,16 @@
+{
+	"compatibility_date": "2025-10-08",
+	"main": "src/index.ts",
+	"name": "nectar-api",
+	"upload_source_maps": true,
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "nectar_db",
+			"database_id": "3320ecc4-b8e9-488d-9a48-082992a3292b"
+		}
+	]
+}
